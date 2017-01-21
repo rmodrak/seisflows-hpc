@@ -9,13 +9,13 @@ import time
 from seisflows.tools import msg
 from seisflows.tools import unix
 from seisflows.tools.code import call, findpath, saveobj
-from seisflows.tools.config import ParameterError, custom_import
+from seisflows.config import ParameterError, custom_import
 
 PAR = sys.modules['seisflows_parameters']
 PATH = sys.modules['seisflows_paths']
 
 
-class chinook_lg(custom_import('system', 'slurm_lg'):
+class chinook_lg(custom_import('system', 'slurm_lg')):
     """ Interface for University of Alaska Fairbanks chinook
     """
 
