@@ -45,6 +45,9 @@ class chinook_sm(custom_import('system', 'slurm_sm')):
         if 'SLURMARGS' not in PAR:
             setattr(PAR, 'SLURMARGS', '')
 
+        if 'PARTITION' not in PAR:
+            setattr(PAR, 'PARTITION', 't1small')
+
         # check paths
         if 'SCRATCH' not in PATH:
             setattr(PATH, 'SCRATCH', join(os.getenv('CENTER'), 'scratch', str(uuid4())))
@@ -72,7 +75,7 @@ class chinook_sm(custom_import('system', 'slurm_sm')):
         # prepare sbatch arguments
         call('sbatch '
                 + '%s ' % PAR.SLURMARGS
-                + '--partition=%s ' % 't1small'
+                + '--partition=%s ' % PAR.PARTITION
                 + '--job-name=%s ' % PAR.TITLE
                 + '--output %s ' % (PATH.SUBMIT+'/'+'output.log')
                 + '--cpus-per-task=%d '%PAR.NPROC
