@@ -35,68 +35,8 @@ class slurm_ft(custom_import('system', 'slurm_lg')):
     def check(self):
         """ Checks parameters and paths
         """
-        # name of job
-        if 'TITLE' not in PAR:
-            setattr(PAR, 'TITLE', basename(abspath('.')))
+        super(slurm_ft, self).check()
 
-        # time allocated for workflow in minutes
-        if 'WALLTIME' not in PAR:
-            setattr(PAR, 'WALLTIME', 30.)
-
-        # time allocated for each individual task in minutes
-        if 'TASKTIME' not in PAR:
-            setattr(PAR, 'TASKTIME', 15.)
-
-        # number of tasks
-        if 'NTASK' not in PAR:
-            raise ParameterError(PAR, 'NTASK')
-
-        # number of cores per task
-        if 'NPROC' not in PAR:
-            raise ParameterError(PAR, 'NPROC')
-
-        # number of cores per node
-        if 'NODESIZE' not in PAR:
-            raise ParameterError(PAR, 'NODESIZE')
-
-        # how to invoke executables
-        if 'MPIEXEC' not in PAR:
-            setattr(PAR, 'MPIEXEC', 'srun')
-
-        # optional additional SLURM arguments
-        if 'SLURMARGS' not in PAR:
-            setattr(PAR, 'SLURMARGS', '')
-
-        # optional environment variable list VAR1=val1,VAR2=val2,...
-        if 'ENVIRONS' not in PAR:
-            setattr(PAR, 'ENVIRONS', '')
-
-        # level of detail in output messages
-        if 'VERBOSE' not in PAR:
-            setattr(PAR, 'VERBOSE', 1)
-
-        # where job was submitted
-        if 'WORKDIR' not in PATH:
-            setattr(PATH, 'WORKDIR', abspath('.'))
-
-        # where output files are written
-        if 'OUTPUT' not in PATH:
-            setattr(PATH, 'OUTPUT', PATH.WORKDIR+'/'+'output')
-
-        # where temporary files are written
-        if 'SCRATCH' not in PATH:
-            setattr(PATH, 'SCRATCH', PATH.WORKDIR+'/'+'scratch')
-
-        # where system files are written
-        if 'SYSTEM' not in PATH:
-            setattr(PATH, 'SYSTEM', PATH.SCRATCH+'/'+'system')
-
-        # optional local scratch path
-        if 'LOCAL' not in PATH:
-            setattr(PATH, 'LOCAL', None)
-
-
-    ### job array methods
 
     def resubmit_failed_job(self, classname, funcname, jobs, taskid):
         with open(PATH.SYSTEM+'/'+'job_id', 'w') as file:
@@ -112,7 +52,6 @@ class slurm_ft(custom_import('system', 'slurm_lg')):
 
         # add resubmitted job to list
         jobs.insert(taskid, jobid)
-
         return jobs
 
 
