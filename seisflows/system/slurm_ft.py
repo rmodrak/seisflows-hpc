@@ -15,21 +15,7 @@ PATH = sys.modules['seisflows_paths']
 
 
 class slurm_ft(custom_import('system', 'slurm_lg')):
-    """ An interface through which to submit workflows, run tasks in serial or 
-      parallel, and perform other system functions.
-
-      By hiding environment details behind a python interface layer, these 
-      classes provide a consistent command set across different computing
-      environments.
-
-      Intermediate files are written to a global scratch path PATH.SCRATCH,
-      which must be accessible to all compute nodes.
-
-      Optionally, users can provide a local scratch path PATH.LOCAL if each
-      compute node has its own local filesystem.
-
-      For important additional information, please see 
-      http://seisflows.readthedocs.org/en/latest/manual/manual.html#system-configuration
+    """ Adds fault tolerance to slurm_lg
     """
 
     def check(self):
