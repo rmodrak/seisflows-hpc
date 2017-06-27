@@ -14,14 +14,14 @@ PAR = sys.modules['seisflows_parameters']
 PATH = sys.modules['seisflows_paths']
 
 
-class slurm_ft(custom_import('system', 'slurm_lg')):
+class slurm_FT(custom_import('system', 'slurm_lg')):
     """ Adds fault tolerance to slurm_lg
     """
 
     def check(self):
         """ Checks parameters and paths
         """
-        super(slurm_ft, self).check()
+        super(slurm_FT, self).check()
 
 
     def resubmit_failed_job(self, classname, funcname, jobs, taskid):
