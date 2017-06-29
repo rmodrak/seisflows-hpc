@@ -14,7 +14,7 @@ PATH = sys.modules['seisflows_paths']
 class tiger_lg(custom_import('system', 'slurm_lg')):
     """ Specially designed system interface for tiger.princeton.edu
 
-      See parent class for more information.
+      See parent class SLURM_LG for more information
     """
 
     def check(self):

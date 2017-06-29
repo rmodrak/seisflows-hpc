@@ -111,11 +111,12 @@ class slurm_dsh(custom_import('system', 'base')):
                 + PATH.OUTPUT)
 
 
-    def run(self, classname, funcname, hosts='all', **kwargs):
-        """  Runs tasks in serial or parallel on specified hosts
+    def run(self, classname, method, hosts='all', **kwargs):
+        """ Executes the following task:
+              classname.method(*args, **kwargs)
         """
         self.checkpoint()
-        self.save_kwargs(classname, funcname, kwargs)
+        self.save_kwargs(classname, method, kwargs)
 
         if hosts == 'all':
             # run on all available nodes
@@ -124,7 +125,7 @@ class slurm_dsh(custom_import('system', 'base')):
                     + findpath('seisflows.system')  +'/'+'wrappers/run '
                     + PATH.OUTPUT + ' '
                     + classname + ' '
-                    + funcname + ' ' 
+                    + method + ' ' 
                     + PAR.ENVIRONS)
 
         elif hosts == 'head':
@@ -135,7 +136,7 @@ class slurm_dsh(custom_import('system', 'base')):
                     + join(findpath('seisflows.system'), 'wrappers/run ')
                     + PATH.OUTPUT + ' '
                     + classname + ' '
-                    + funcname + ' '
+                    + method + ' '
                     + PAR.ENVIRONS
                     +'"')
 
@@ -144,6 +145,8 @@ class slurm_dsh(custom_import('system', 'base')):
 
 
     def hostlist(self):
+        """ Generates list of allocated cores
+        """
         tasks_per_node = []
         for pattern in os.getenv('SLURM_TASKS_PER_NODE').split(','):
             match = re.search('([0-9]+)\(x([0-9]+)\)', pattern)
@@ -166,7 +169,7 @@ class slurm_dsh(custom_import('system', 'base')):
         
 
     def taskid(self):
-        """ Gets number of running task
+        """ Provides a unique identifier for each running task
         """
         return int(os.getenv('SEISFLOWS_TASK_ID'))
 
@@ -178,9 +181,9 @@ class slurm_dsh(custom_import('system', 'base')):
         #return 'mpirun -np %d '%PAR.NPROC
 
 
-    def save_kwargs(self, classname, funcname, kwargs):
+    def save_kwargs(self, classname, method, kwargs):
         kwargspath = join(PATH.OUTPUT, 'kwargs')
-        kwargsfile = join(kwargspath, classname+'_'+funcname+'.p')
+        kwargsfile = join(kwargspath, classname+'_'+method+'.p')
         unix.mkdir(kwargspath)
         saveobj(kwargsfile, kwargs)
 

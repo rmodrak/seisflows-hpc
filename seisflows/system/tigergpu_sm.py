@@ -61,11 +61,12 @@ class tigergpu_sm(custom_import('system', 'slurm_sm')):
                 + PATH.OUTPUT)
 
 
-    def run(self, classname, funcname, hosts='all', **kwargs):
-        """  Runs tasks in serial or parallel on specified hosts
+    def run(self, classname, method, hosts='all', **kwargs):
+        """ Executes the following task:
+              classname.method(*args, **kwargs)
         """
         self.checkpoint()
-        self.save_kwargs(classname, funcname, kwargs)
+        self.save_kwargs(classname, method, kwargs)
 
         if hosts == 'all':
             # run on all available nodes
@@ -73,7 +74,7 @@ class tigergpu_sm(custom_import('system', 'slurm_sm')):
                     + join(pkgpath('seisflows'), 'system/wrappers/run') + ' '
                     + PATH.OUTPUT + ' '
                     + classname + ' '
-                    + funcname + ' '
+                    + method + ' '
                     + str(PAR.NTASK) + ' '
                     + PAR.ENVIRONS)
 
@@ -85,7 +86,7 @@ class tigergpu_sm(custom_import('system', 'slurm_sm')):
                     + join(pkgpath('seisflows'), 'system/wrappers/run')
                     + PATH.OUTPUT + ' '
                     + classname + ' '
-                    + funcname + ' '
+                    + method + ' '
                     + PAR.ENVIRONS)
 
 

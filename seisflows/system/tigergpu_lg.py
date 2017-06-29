@@ -20,6 +20,10 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
     def check(self):
         """ Checks parameters and paths
         """
+        hostname = unix.hostname()
+        if hostname != 'tigergpu':
+            print msg.SystemWarning % ('tigergpu', hostname)
+
         # where job was submitted
         if 'WORKDIR' not in PATH:
             setattr(PATH, 'WORKDIR', abspath('.'))
@@ -54,7 +58,7 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
                 + PATH.OUTPUT)
 
 
-    def job_array_cmd(self, classname, funcname, hosts):
+    def job_array_cmd(self, classname, method, hosts):
         return ('sbatch '
                 + '%s ' % PAR.SLURMARGS
                 + '--job-name=%s ' % PAR.TITLE
@@ -67,6 +71,6 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
                 + findpath('seisflows.system') +'/'+ 'wrappers/run '
                 + PATH.OUTPUT + ' '
                 + classname + ' '
-                + funcname + ' '
+                + method + ' '
                 + PAR.ENVIRONS)
 

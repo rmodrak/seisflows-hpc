@@ -24,9 +24,9 @@ class slurm_FT(custom_import('system', 'slurm_lg')):
         super(slurm_FT, self).check()
 
 
-    def resubmit_failed_job(self, classname, funcname, jobs, taskid):
+    def resubmit_failed_job(self, classname, method, jobs, taskid):
         with open(PATH.SYSTEM+'/'+'job_id', 'w') as file:
-            call(self.resubmit_cmd(classname, funcname, taskid),
+            call(self.resubmit_cmd(classname, method, taskid),
                 stdout=file)
 
         with open(PATH.SYSTEM+'/'+'job_id', 'r') as file:
@@ -41,7 +41,7 @@ class slurm_FT(custom_import('system', 'slurm_lg')):
         return jobs
 
 
-    def resubmit_cmd(self, classname, funcname, taskid):
+    def resubmit_cmd(self, classname, method, taskid):
         return ('sbatch '
                 + '%s ' % PAR.SLURMARGS
                 + '--job-name=%s ' % PAR.TITLE
@@ -54,12 +54,12 @@ class slurm_FT(custom_import('system', 'slurm_lg')):
                 + findpath('seisflows.system') +'/'+ 'wrappers/run '
                 + PATH.OUTPUT + ' '
                 + classname + ' '
-                + funcname + ' ' 
+                + method + ' ' 
                 + PAR.ENVIRONS)
 
 
     def taskid(self):
-        """ Gets number of running task
+        """ Provides a unique identifier for each running task
         """
         if os.getenv('SLURM_ARRAY_TASK_ID'):
             return int(os.getenv('SLURM_ARRAY_TASK_ID'))
@@ -70,18 +70,18 @@ class slurm_FT(custom_import('system', 'slurm_lg')):
                 raise Exception("TASKID environment variable not defined.")
 
 
-    def job_array_status(self, classname, funcname, jobs):
+    def job_array_status(self, classname, method, jobs):
         """ Determines completion status of one or more jobs
         """
         states = []
         for taskid, job in enumerate(jobs):
             state = self._query(job)
             if state in ['TIMEOUT']:
-                print msg.TimoutError % (classname, funcname, job, PAR.TASKTIME)
+                print msg.TimoutError % (classname, method, job, PAR.TASKTIME)
                 sys.exit(-1)
             elif state in ['FAILED', 'NODE_FAIL']:
                 print ' task %d failed, retrying' % taskid
-                jobs = self.resubmit_failed_job(classname, funcname, jobs, taskid)
+                jobs = self.resubmit_failed_job(classname, method, jobs, taskid)
                 states += [0]
 
             elif state in ['COMPLETED']:

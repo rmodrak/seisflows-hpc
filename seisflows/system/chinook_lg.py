@@ -96,7 +96,7 @@ class chinook_lg(custom_import('system', 'slurm_lg')):
                 + PATH.OUTPUT)
 
 
-    def job_array_cmd(self, classname, funcname, hosts):
+    def job_array_cmd(self, classname, method, hosts):
 
         nodes_per_job = math.ceil(PAR.NPROC/float(PAR.NODESIZE))
         if nodes_per_job <= 2:
@@ -116,7 +116,7 @@ class chinook_lg(custom_import('system', 'slurm_lg')):
                 + findpath('seisflows.system') +'/'+ 'wrappers/run '
                 + PATH.OUTPUT + ' '
                 + classname + ' '
-                + funcname + ' ')
+                + method + ' ')
 
 
     def mpiexec(self):

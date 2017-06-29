@@ -43,7 +43,7 @@ class copper_lg(custom_import('system', 'pbs_lg')):
         return 'aprun -n %d' % 1
 
 
-    def _launch(self, classname, funcname, hosts='all'):
+    def _launch(self, classname, method, hosts='all'):
         unix.mkdir(PATH.SYSTEM)
 
         nodes = math.ceil(PAR.NTASK/float(PAR.NODESIZE))
@@ -67,7 +67,7 @@ class copper_lg(custom_import('system', 'pbs_lg')):
                 + self.launch_args(hosts)
                 + PATH.OUTPUT + ' '
                 + classname + ' '
-                + funcname + ' '
+                + method + ' '
                 + findpath('seisflows'))
 
             # print(args)
