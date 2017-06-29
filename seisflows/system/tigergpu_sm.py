@@ -1,10 +1,11 @@
 
 import sys
 
-from getpass import getuser
-from os.path import abspath, exists
+from math import ceil
+from os.path import abspath, join, exists
 from uuid import uuid4
 from seisflows.tools import unix
+from seisflows.tools.tools import call, pkgpath
 from seisflows.config import ParameterError, custom_import
 
 PAR = sys.modules['seisflows_parameters']
@@ -31,7 +32,33 @@ class tigergpu_sm(custom_import('system', 'slurm_sm')):
         if 'SCRATCH' not in PATH:
             setattr(PATH, 'SCRATCH', PATH.WORKDIR+'/'+'scratch')
 
-        super(tiger_lg, self).check()
+        super(tigergpu_sm, self).check()
+
+
+    def submit(self, workflow):
+        """ Submits workflow
+        """
+        # create scratch directories
+        unix.mkdir(PATH.SCRATCH)
+        unix.mkdir(PATH.SYSTEM)
+
+        # create output directories
+        unix.mkdir(PATH.OUTPUT)
+
+        self.checkpoint()
+
+        # submit workflow
+        call('sbatch '
+                + '%s ' %  PAR.SLURMARGS
+                + '--job-name=%s '%PAR.TITLE
+                + '--output=%s '%(PATH.WORKDIR +'/'+ 'output.log')
+                + '--ntasks=%d '%PAR.NTASK
+                + '--nodes=%d '%ceil(PAR.NTASK/4.)
+                + '--ntasks-per-node=%d '%min(PAR.NTASK,4)
+                + '--gres=gpu:%d '%min(PAR.NTASK,4)
+                + '--time=%d '%PAR.WALLTIME
+                + pkgpath('seisflows') +'/'+ 'system/wrappers/submit '
+                + PATH.OUTPUT)
 
 
     def run(self, classname, funcname, hosts='all', **kwargs):
@@ -42,21 +69,20 @@ class tigergpu_sm(custom_import('system', 'slurm_sm')):
 
         if hosts == 'all':
             # run on all available nodes
-            call('srun '
-                    + '--wait=0 '
-                    + join(findpath('seisflows-hpc'), 'system/wrapper/dsh_tigergpu')
+            call(join(pkgpath('seisflows-hpc'), 'system/wrappers/dsh_tigergpu') + ' '
+                    + join(pkgpath('seisflows'), 'system/wrappers/run') + ' '
                     + PATH.OUTPUT + ' '
                     + classname + ' '
                     + funcname + ' '
+                    + str(PAR.NTASK) + ' '
                     + PAR.ENVIRONS)
 
         elif hosts == 'head':
             # run on head node
             call('srun '
-                    + '--wait=0 '
                     + '--ntasks=1 '
                     + '--nodes=1 '
-                    + join(findpath('seisflows'), 'system/wrappers/run')
+                    + join(pkgpath('seisflows'), 'system/wrappers/run')
                     + PATH.OUTPUT + ' '
                     + classname + ' '
                     + funcname + ' '
