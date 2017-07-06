@@ -9,6 +9,6 @@ Extension to the main SeisFlows package
 
 Once the main SeisFlows package is installed, installation of the extension package is simple:
 ```
-git clone https://github.com/rmodrak/seisflows-hpc.git 
-export PYTHONPATH=$PYTHONPATH:$PWD/seisflows-hpc
+git clone https://github.com/rmodrak/seisflows-hpc.git /path/to/seisflows-hpc
+export PYTHONPATH=$PYTHONPATH:/path/to/seisflows-hpc
 ```
