@@ -5,13 +5,14 @@ from getpass import getuser
 from os.path import abspath, exists
 from uuid import uuid4
 from seisflows.tools import unix
+from seisflows.tools.tools import call, pkgpath
 from seisflows.config import ParameterError, custom_import
 
 PAR = sys.modules['seisflows_parameters']
 PATH = sys.modules['seisflows_paths']
 
 
-class tigergpu_lg(custom_import('system', 'slurm_lg'))
+class tigergpu_lg(custom_import('system', 'slurm_lg')):
     """ Specially designed system interface for tigergpu.princeton.edu
 
       See parent class for more information.
@@ -23,6 +24,10 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
         hostname = unix.hostname()
         if hostname != 'tigergpu':
             print msg.SystemWarning % ('tigergpu', hostname)
+
+        # number of cores per node
+        if 'NODESIZE' not in PAR:
+            setattr(PAR, 'NODESIZE', 28)
 
         # where job was submitted
         if 'WORKDIR' not in PATH:
@@ -41,6 +46,20 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
     def submit(self, *args, **kwargs):
         """ Submits job
         """
+        # create scratch directories
+        if not exists(PATH.SCRATCH):
+            path = '/scratch/gpfs'+'/'+getuser()+'/'+'seisflows'+'/'+str(uuid4())
+            unix.mkdir(path)
+            unix.ln(path, PATH.SCRATCH)
+
+        unix.mkdir(PATH.SYSTEM)
+
+        # create output directories
+        unix.mkdir(PATH.OUTPUT)
+        unix.mkdir(PATH.WORKDIR+'/'+'output.slurm')
+
+        self.checkpoint()
+
         if not exists(PATH.SCRATCH):
             path = '/scratch/gpfs'+'/'+getuser()+'/'+'seisflows'+'/'+str(uuid4())
             unix.mkdir(path)
@@ -49,12 +68,12 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
         call('sbatch '
                 + '%s ' % PAR.SLURMARGS
                 + '--job-name=%s ' % PAR.TITLE
-                + '--output %s ' % (PATH.WORKDIR+'/'+'output.log')
+                + '--output=%s ' % (PATH.WORKDIR+'/'+'output.log')
                 + '--ntasks-per-node=%d ' % 28
-                + '--gres=gpu:%d' % 4
+                + '--gres=gpu:%d ' % 4
                 + '--nodes=%d ' % 1
                 + '--time=%d ' % PAR.WALLTIME
-                + findpath('seisflows.system') +'/'+ 'wrappers/submit '
+                + pkgpath('seisflows') +'/'+ 'system/wrappers/submit '
                 + PATH.OUTPUT)
 
 
@@ -64,11 +83,11 @@ class tigergpu_lg(custom_import('system', 'slurm_lg'))
                 + '--job-name=%s ' % PAR.TITLE
                 + '--nodes=1 '
                 + '--ntasks-per-node=%s ' % PAR.NPROC
-                + '--gres=gpu:%d' % NGPU
+                + '--gres=gpu:%d ' % PAR.NGPU
                 + '--ntasks=%d ' % PAR.NPROC
                 + '--time=%d ' % PAR.TASKTIME
                 + self.job_array_args(hosts)
-                + findpath('seisflows.system') +'/'+ 'wrappers/run '
+                + pkgpath('seisflows') +'/'+ 'system/wrappers/run '
                 + PATH.OUTPUT + ' '
                 + classname + ' '
                 + method + ' '
