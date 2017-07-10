@@ -21,9 +21,9 @@ class tigergpu_lg(custom_import('system', 'slurm_lg')):
     def check(self):
         """ Checks parameters and paths
         """
-        hostname = unix.hostname()
-        if hostname != 'tigergpu':
-            print msg.SystemWarning % ('tigergpu', hostname)
+        # number of GPUs per simulation
+        if 'NGPU' not in PAR:
+            setattr(PAR, 'NGPU', 1)
 
         # number of cores per node
         if 'NODESIZE' not in PAR:
