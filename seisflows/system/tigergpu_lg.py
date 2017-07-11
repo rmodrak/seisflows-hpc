@@ -93,3 +93,9 @@ class tigergpu_lg(custom_import('system', 'slurm_lg')):
                 + method + ' '
                 + PAR.ENVIRONS)
 
+
+    def mpiexec(self):
+        """ Specifies MPI executable used to invoke solver
+        """
+        return 'mpirun -np %d' % PAR.NPROC
+
