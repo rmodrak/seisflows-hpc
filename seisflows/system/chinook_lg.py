@@ -1,13 +1,14 @@
 
-from os.path import abspath, basename, exists, join
-from uuid import uuid4
-
 import os
 import math
 import sys
+import time
 
+from os.path import abspath, basename, exists, join
+from subprocess import check_output
+from uuid import uuid4
 from seisflows.tools import unix
-from seisflows.tools.code import call, findpath
+from seisflows.tools.tools import call, findpath
 from seisflows.config import ParameterError, custom_import
 
 PAR = sys.modules['seisflows_parameters']
@@ -24,71 +25,93 @@ class chinook_lg(custom_import('system', 'slurm_lg')):
     def check(self):
         """ Checks parameters and paths
         """
-
-        # check parameters
+        # name of job
         if 'TITLE' not in PAR:
             setattr(PAR, 'TITLE', basename(abspath('.')))
 
+        # time allocated for workflow in minutes
         if 'WALLTIME' not in PAR:
             setattr(PAR, 'WALLTIME', 30.)
 
-        if 'STEPTIME' not in PAR:
-            setattr(PAR, 'STEPTIME', 30.)
+        # time allocated for each individual task in minutes
+        if 'TASKTIME' not in PAR:
+            setattr(PAR, 'TASKTIME', 15.)
 
-        if 'SLEEPTIME' not in PAR:
-            setattr(PAR, 'SLEEPTIME', 1.)
-
-        if 'VERBOSE' not in PAR:
-            setattr(PAR, 'VERBOSE', 1)
-
+        # number of tasks
         if 'NTASK' not in PAR:
-            raise ParameterError(PAR, 'NTASK')
+            raise ParameterError(PAR, 100)
 
+        # number of cores per task
         if 'NPROC' not in PAR:
             raise ParameterError(PAR, 'NPROC')
 
+        # limit on number of concurrent tasks
+        if 'NTASKMAX' not in PAR:
+            setattr(PAR, 'NTASKMAX', PAR.NTASK)
+
+        # number of cores per node
         if 'NODESIZE' not in PAR:
             setattr(PAR, 'NODESIZE', 24)
 
+        # how to invoke executables
+        if 'MPIEXEC' not in PAR:
+            setattr(PAR, 'MPIEXEC', 'srun')
+
+        # optional additional SLURM arguments
         if 'SLURMARGS' not in PAR:
             setattr(PAR, 'SLURMARGS', '')
 
-        # check paths
-        if 'SCRATCH' not in PATH:
-            setattr(PATH, 'SCRATCH', join(os.getenv('CENTER'), 'scratch', str(uuid4())))
+        # optional environment variable list VAR1=val1,VAR2=val2,...
+        if 'ENVIRONS' not in PAR:
+            setattr(PAR, 'ENVIRONS', '')
 
+        # level of detail in output messages
+        if 'VERBOSE' not in PAR:
+            setattr(PAR, 'VERBOSE', 1)
+
+        # where job was submitted
+        if 'WORKDIR' not in PATH:
+            setattr(PATH, 'WORKDIR', abspath('.'))
+
+        # where output files are written
+        if 'OUTPUT' not in PATH:
+            setattr(PATH, 'OUTPUT', PATH.WORKDIR+'/'+'output')
+
+        # where temporary files are written
+        if 'SCRATCH' not in PATH:
+            setattr(PATH, 'SCRATCH', join(os.getenv('CENTER1'), 'scratch', str(uuid4())))
+
+        # where system files are written
+        if 'SYSTEM' not in PATH:
+            setattr(PATH, 'SYSTEM', PATH.SCRATCH+'/'+'system')
+
+        # optional local scratch path
         if 'LOCAL' not in PATH:
             setattr(PATH, 'LOCAL', None)
-
-        if 'SUBMIT' not in PATH:
-            setattr(PATH, 'SUBMIT', abspath('.'))
-
-        if 'OUTPUT' not in PATH:
-            setattr(PATH, 'OUTPUT', join(PATH.SUBMIT, 'output'))
-
-        if 'SYSTEM' not in PATH:
-            setattr(PATH, 'SYSTEM', join(PATH.SCRATCH, 'system'))
 
 
     def submit(self, workflow):
         """ Submits workflow
         """
-        unix.cd(PATH.SUBMIT)
-        if not exists('./scratch'): 
-            unix.ln(PATH.SCRATCH, PATH.SUBMIT+'/'+'scratch')
+        # create scratch directories
+        unix.mkdir(PATH.SCRATCH)
+        unix.mkdir(PATH.SYSTEM)
 
+        # create output directories
         unix.mkdir(PATH.OUTPUT)
-        unix.cd(PATH.OUTPUT)
-        unix.mkdir(PATH.SUBMIT+'/'+'output.slurm')
+        unix.mkdir(PATH.WORKDIR+'/'+'output.slurm')
 
-        self.checkpoint()
+        if not exists('./scratch'): 
+            unix.ln(PATH.SCRATCH, PATH.WORKDIR+'/'+'scratch')
+
+        workflow.checkpoint()
 
         # prepare sbatch arguments
         call('sbatch '
                 + '%s ' % PAR.SLURMARGS
                 + '--partition=%s ' % 't1small'
                 + '--job-name=%s ' % PAR.TITLE
-                + '--output %s ' % (PATH.SUBMIT+'/'+'output.log')
+                + '--output %s ' % (PATH.WORKDIR+'/'+'output.log')
                 + '--ntasks-per-node=%d ' % PAR.NODESIZE
                 + '--nodes=%d ' % 1
                 + '--time=%d ' % PAR.WALLTIME
@@ -96,7 +119,10 @@ class chinook_lg(custom_import('system', 'slurm_lg')):
                 + PATH.OUTPUT)
 
 
-    def job_array_cmd(self, classname, method, hosts):
+    def run(self, classname, method, *args, **kwargs):
+
+        self.checkpoint(PATH.OUTPUT, classname, method, args, kwargs)
+
 
         nodes_per_job = math.ceil(PAR.NPROC/float(PAR.NODESIZE))
         if nodes_per_job <= 2:
@@ -104,19 +130,36 @@ class chinook_lg(custom_import('system', 'slurm_lg')):
         else:
             partition = 't1standard'
 
-        return ('sbatch '
-                + '%s ' % PAR.SLURMARGS
-                + '--partition=%s ' % partition
-                + '--job-name=%s ' % PAR.TITLE
-                + '--nodes=%d ' % nodes_per_job
-                + '--ntasks-per-node=%d ' % PAR.NODESIZE
-                + '--ntasks=%d ' % PAR.NPROC
-                + '--time=%d ' % PAR.STEPTIME
-                + self.job_array_args(hosts)
-                + findpath('seisflows.system') +'/'+ 'wrappers/run '
-                + PATH.OUTPUT + ' '
-                + classname + ' '
-                + method + ' ')
+
+        # submit job array
+        stdout = check_output(
+                   'sbatch %s ' % PAR.SLURMARGS
+                   + '--job-name=%s ' % PAR.TITLE
+                   + '--partition=%s ' % partition
+                   + '--nodes=%d ' % math.ceil(PAR.NPROC/float(PAR.NODESIZE))
+                   + '--ntasks-per-node=%d ' % PAR.NODESIZE
+                   + '--ntasks=%d ' % PAR.NPROC
+                   + '--time=%d ' % PAR.TASKTIME
+                   + '--array=%d-%d ' % (0,(PAR.NTASK-1)%PAR.NTASKMAX)
+                   + '--output %s ' % (PATH.WORKDIR+'/'+'output.slurm/'+'%A_%a')
+                   + '%s ' % (findpath('seisflows.system') +'/'+ 'wrappers/run')
+                   + '%s ' % PATH.OUTPUT
+                   + '%s ' % classname
+                   + '%s ' % method
+                   + '%s ' % PAR.ENVIRONS,
+                   shell=True)
+
+        # keep track of job ids
+        jobs = self.job_id_list(stdout, PAR.NTASK)
+
+        # check job array completion status
+        while True:
+            # wait a few seconds between queries
+            time.sleep(5)
+
+            isdone, jobs = self.job_array_status(classname, method, jobs)
+            if isdone:
+                return
 
 
     def mpiexec(self):
